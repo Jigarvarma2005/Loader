@@ -24,11 +24,9 @@ def _delete_repos() -> None:
 
     Repos.load()
 
-    out = ""
-
-    for repo in Repos.iter_repos():
-        out += f"{repo.info.id}. {repo.info.url}\n"
-
+    out = "".join(
+        f"{repo.info.id}. {repo.info.url}\n" for repo in Repos.iter_repos()
+    )
     code = input(f"""Menu > settings > repos > delete
 0. back
 {out.strip()}
@@ -38,15 +36,14 @@ def _delete_repos() -> None:
         if code == '0':
             _repos()
 
+        elif code.isnumeric() and Repos.get(int(code)):
+            Repos.remove(int(code))
+
+            _delete_repos()
+
         else:
-            if code.isnumeric() and Repos.get(int(code)):
-                Repos.remove(int(code))
-
-                _delete_repos()
-
-            else:
-                code = _invalid(code)
-                continue
+            code = _invalid(code)
+            continue
 
         break
 
@@ -67,14 +64,13 @@ def _core() -> None:
             _settings()
 
         elif code == '1':
-            core = Repos.get_core()
-            if core:
+            if core := Repos.get_core():
                 core.reset()
 
             _print("reset core")
             _core()
 
-        elif code == '2' or code == '3':
+        elif code in ['2', '3']:
             Sig.core_remove()
 
             if code == '2':
@@ -115,7 +111,7 @@ def _repos() -> None:
         elif code == '1':
             _delete_repos()
 
-        elif code == '2' or code == '3':
+        elif code in ['2', '3']:
             Sig.repos_remove()
 
             if code == '2':
@@ -159,7 +155,7 @@ def _settings() -> None:
         elif code == '2':
             _repos()
 
-        elif code == '3' or code == '4':
+        elif code in ['3', '4']:
             Sig.core_remove()
             Sig.repos_remove()
 

@@ -41,9 +41,7 @@ def init_core() -> None:
 
     core.checkout_version()
 
-    loader_version = core.grab_loader_version()
-
-    if loader_version:
+    if loader_version := core.grab_loader_version():
         if __version__ < loader_version:
             log("\tUpdating loader to latest ...")
 
@@ -253,8 +251,7 @@ def init_repos() -> None:
 
 
 def install_req() -> None:
-    pip = os.environ.get('CUSTOM_PIP_PACKAGES')
-    if pip:
+    if pip := os.environ.get('CUSTOM_PIP_PACKAGES'):
         Requirements.update(pip.split())
 
     size = Requirements.size()

@@ -48,7 +48,7 @@ class Database:
     def fix_url(cls, url: str) -> str:
         u_and_p = cls._RE_UP.search(url).group(1)
         name, pwd = u_and_p.split(':')
-        escaped = quote_plus(name) + ':' + quote_plus(pwd)
+        escaped = f'{quote_plus(name)}:{quote_plus(pwd)}'
         return url.replace(u_and_p, escaped)
 
     def __init__(self, config: Collection, repos: Collection, constraint: Collection):
@@ -104,8 +104,7 @@ class _Parser:
             return self._section.getboolean(key)
 
     def getset(self, key: str, lower=False) -> Optional[Set[str]]:
-        value = self.get(key)
-        if value:
+        if value := self.get(key):
             return set(filter(None, map(
                 lambda _: _.strip().lower() if lower else _.strip(), value.split(','))))
 
@@ -215,9 +214,11 @@ class _BaseRepo:
 
                 if input_count < head_count:
                     skip = head_count - input_count
-                    data = list(self._git.iter_commits(self.info.branch, max_count=1, skip=skip))
-
-                    if data:
+                    if data := list(
+                        self._git.iter_commits(
+                            self.info.branch, max_count=1, skip=skip
+                        )
+                    ):
                         return data[0]
 
             elif isinstance(version, str) and version:
@@ -303,33 +304,34 @@ class _BaseRepo:
 
     def new_commits(self) -> List[Update]:
         data = []
-        head = self._get_commit()
-
-        if head:
+        if head := self._get_commit():
             top = self._git.commit(self.info.branch)
             diff = top.count() - head.count()
 
             if diff > 0:
-                for commit in self._git.iter_commits(self.info.branch, max_count=diff):
-                    data.append(Update.parse(safe_url(self.info.url), commit))
-
+                data.extend(
+                    Update.parse(safe_url(self.info.url), commit)
+                    for commit in self._git.iter_commits(
+                        self.info.branch, max_count=diff
+                    )
+                )
         return data
 
     def old_commits(self, limit: int) -> List[Update]:
         data = []
 
         if limit > 0:
-            head = self._get_commit()
-
-            if head:
+            if head := self._get_commit():
                 top = self._git.commit(self.info.branch)
                 skip = top.count() - head.count() + 1
 
                 if skip > 0:
-                    for commit in self._git.iter_commits(self.info.branch,
-                                                         max_count=limit, skip=skip):
-                        data.append(Update.parse(safe_url(self.info.url), commit))
-
+                    data.extend(
+                        Update.parse(safe_url(self.info.url), commit)
+                        for commit in self._git.iter_commits(
+                            self.info.branch, max_count=limit, skip=skip
+                        )
+                    )
         return data
 
     def delete(self) -> None:
@@ -518,12 +520,13 @@ class Repos:
         is_id = isinstance(repo_id_or_url, int)
 
         for repo in cls._plugins:
-            if is_id:
-                if repo.info.id == repo_id_or_url:
-                    return repo
-            else:
-                if repo.info.url == repo_id_or_url:
-                    return repo
+            if (
+                is_id
+                and repo.info.id == repo_id_or_url
+                or not is_id
+                and repo.info.url == repo_id_or_url
+            ):
+                return repo
 
     @classmethod
     def has_repos(cls) -> bool:
@@ -550,8 +553,7 @@ class Repos:
 
     @classmethod
     def remove(cls, repo_id: int) -> bool:
-        repo = cls.get(repo_id)
-        if repo:
+        if repo := cls.get(repo_id):
             cls._plugins.remove(repo)
             Database.get().repos.delete_one({'url': repo.info.url})
             repo.delete()
@@ -614,10 +616,7 @@ class _ConstraintData:
         if self.plg_name and self.plg_name != plg_name:
             return False
 
-        if self.repo_name or self.plg_cat or self.plg_name:
-            return True
-
-        return False
+        return bool(self.repo_name or self.plg_cat or self.plg_name)
 
     def __str__(self) -> str:
         return self.raw
@@ -669,14 +668,10 @@ class _Constraint:
         return len(self._data) == 0
 
     def match(self, *args: str) -> bool:
-        for part in self._data:
-            if part.match(*args):
-                return True
-
-        return False
+        return any(part.match(*args) for part in self._data)
 
     def __str__(self) -> str:
-        return self.get_type() + '(' + str(self._to_str_list()) + ')'
+        return f'{self.get_type()}({str(self._to_str_list())})'
 
 
 class _Include(_Constraint):
@@ -714,12 +709,7 @@ class _Constraints:
         return removed
 
     def clear(self) -> int:
-        _count = 0
-
-        for const in self._data:
-            _count += const.clear()
-
-        return _count
+        return sum(const.clear() for const in self._data)
 
     def to_constraints(self) -> List[Constraint]:
         return list(filter(None, map(_Constraint.to_constraint, self._data)))
@@ -755,9 +745,7 @@ class Constraints:
             c_type = d['type']
             data = d['data']
 
-            const = cls._data.get(c_type)
-
-            if const:
+            if const := cls._data.get(c_type):
                 const.add([data])
 
         cls._loaded = True
@@ -769,9 +757,7 @@ class Constraints:
         if not const:
             return False
 
-        to_add = const.add(data)
-
-        if to_add:
+        if to_add := const.add(data):
             Database.get().constraint.insert_many(
                 map(lambda _: dict(type=const.get_type(), data=_), to_add))
 
@@ -784,12 +770,11 @@ class Constraints:
     @classmethod
     def remove(cls, c_type: Optional[str], data: List[str]) -> bool:
         if c_type:
-            const = cls._data.get(c_type)
-
-            if not const:
+            if const := cls._data.get(c_type):
+                to_remove = const.remove(data)
+            else:
                 return False
 
-            to_remove = const.remove(data)
         else:
             to_remove = cls._data.remove(data)
 
@@ -809,12 +794,11 @@ class Constraints:
     @classmethod
     def clear(cls, c_type: Optional[str]) -> bool:
         if c_type:
-            const = cls._data.get(c_type)
-
-            if not const:
+            if const := cls._data.get(c_type):
+                _count = const.clear()
+            else:
                 return False
 
-            _count = const.clear()
         else:
             _count = cls._data.clear()
 

@@ -43,8 +43,7 @@ def fetch_core() -> None:
 
 @on(job.FETCH_REPO)
 def fetch_repo(repo_id: int) -> None:
-    repo = Repos.get(repo_id)
-    if repo:
+    if repo := Repos.get(repo_id):
         repo.init()
         repo.fetch()
 
@@ -58,26 +57,19 @@ def fetch_repos() -> None:
 
 @on(job.GET_CORE)
 def get_core() -> Optional[RepoInfo]:
-    core = Repos.get_core()
-    if core:
+    if core := Repos.get_core():
         return core.info
 
 
 @on(job.GET_REPO)
 def get_repo(repo_id: int) -> Optional[RepoInfo]:
-    repo = Repos.get(repo_id)
-    if repo:
+    if repo := Repos.get(repo_id):
         return safe_repo_info(repo.info)
 
 
 @on(job.GET_REPOS)
 def get_repos() -> List[RepoInfo]:
-    data = []
-
-    for repo in Repos.iter_repos():
-        data.append(safe_repo_info(repo.info))
-
-    return data
+    return [safe_repo_info(repo.info) for repo in Repos.iter_repos()]
 
 
 @on(job.ADD_REPO)
@@ -92,46 +84,37 @@ def remove_repo(repo_id: int) -> bool:
 
 @on(job.GET_CORE_NEW_COMMITS)
 def get_core_new_commits() -> Optional[List[Update]]:
-    core = Repos.get_core()
-    if core:
+    if core := Repos.get_core():
         return core.new_commits()
 
 
 @on(job.GET_CORE_OLD_COMMITS)
 def get_core_old_commits(limit: int) -> Optional[List[Update]]:
-    core = Repos.get_core()
-    if core:
+    if core := Repos.get_core():
         return core.old_commits(limit)
 
 
 @on(job.GET_REPO_NEW_COMMITS)
 def get_repo_new_commits(repo_id: int) -> Optional[List[Update]]:
-    repo = Repos.get(repo_id)
-    if repo:
+    if repo := Repos.get(repo_id):
         return repo.new_commits()
 
 
 @on(job.GET_REPO_OLD_COMMITS)
 def get_repo_old_commits(repo_id: int, limit: int) -> Optional[List[Update]]:
-    repo = Repos.get(repo_id)
-    if repo:
+    if repo := Repos.get(repo_id):
         return repo.old_commits(limit)
 
 
 @on(job.EDIT_CORE)
 def edit_core(branch: Optional[str], version: Optional[Union[int, str]]) -> bool:
-    core = Repos.get_core()
-    if core:
-        return core.edit(branch, version)
-
-    return False
+    return core.edit(branch, version) if (core := Repos.get_core()) else False
 
 
 @on(job.EDIT_REPO)
 def edit_repo(repo_id: int, branch: Optional[str], version: Optional[Union[int, str]],
               priority: Optional[int]) -> bool:
-    repo = Repos.get(repo_id)
-    if repo:
+    if repo := Repos.get(repo_id):
         return repo.edit(branch, version, priority)
 
     return False

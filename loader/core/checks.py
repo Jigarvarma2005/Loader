@@ -178,14 +178,14 @@ def _vars() -> None:
         Database.set(cl)
 
     if bot_token:
-        api_url = "https://api.telegram.org/bot" + bot_token
+        api_url = f"https://api.telegram.org/bot{bot_token}"
 
-        e = open_url(api_url + "/getMe")[1]
+        e = open_url(f"{api_url}/getMe")[1]
 
         if e:
             error("Invalid BOT_TOKEN var !", "get or revoke it from @botfather")
 
-        r, e = open_url(api_url + "/getChat?chat_id=" + log_channel)
+        r, e = open_url(f"{api_url}/getChat?chat_id={log_channel}")
 
         if e:
             if r == 400:

@@ -69,10 +69,8 @@ def get_client_type() -> str:
     token = os.environ.get('BOT_TOKEN')
     string = os.environ.get('SESSION_STRING')
 
-    if token and string:
-        return "dual"
     if token:
-        return "bot"
+        return "dual" if string else "bot"
     if string:
         return "user"
 
@@ -135,12 +133,10 @@ def grab_conflicts(requirements: Set[str]) -> Set[str]:
         pattern.append(seq)
         pattern.extend(combinations(seq, 2))
 
-        for j in range(i + 1):
-            pattern.append((seq[j],))
-
+        pattern.extend((seq[j], ) for j in range(i + 1))
     pattern = tuple(pattern)
 
-    for name, versions in to_audit.items():
+    for versions in to_audit.values():
         found = False
 
         for version in sorted(versions, reverse=True):
